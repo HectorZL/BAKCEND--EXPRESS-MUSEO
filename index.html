@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Galería de Arte 3D</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #FFF8E1; /* Same color as scene background */
+    }
+    canvas {
+      display: block;
+    }
+    /* Modal styles */
+    .modal {
+      display: flex;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 1;
+      transition: opacity 0.3s ease-in-out;
+    }
+    
+    .modal.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .modal-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .info-icon {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 30px;
+      height: 30px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      z-index: 1001;
+      font-weight: bold;
+      font-size: 18px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <!-- Modal -->
+  <div id="welcomeModal" class="modal">
+    <div class="modal-content">
+      <p>Clic para comenzar - Usa WASD para moverte por la galería 3D - ESC para salir</p>
+      <button id="closeModal" style="margin-top: 20px; padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Entendido</button>
+    </div>
+  </div>
+  
+  <!-- Info Icon -->
+  <div id="infoIcon" class="info-icon">i</div>
+
+  <!-- Polyfill para import maps en navegadores antiguos -->
+  <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+
+  <!-- Import map: mapea "three" y "three/addons/" a las rutas correctas -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.149.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.149.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <!-- Modal functionality -->
+  <script src="js/modal.js"></script>
+  
+  <script type="module">
+    // Usar ruta absoluta para asegurar que se encuentre el módulo
+    import { App } from '/src/App.js';
+
+    // Inicializar la aplicación cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const app = new App();
+        // La aplicación se inicializa automáticamente en el constructor
+      } catch (error) {
+        console.error('Error al inicializar la aplicación:', error);
+        document.getElementById('msg').textContent = 'Error al cargar la aplicación. Por favor, recarga la página.';
+      }
+    });
+  </script>
+</body>
+</html>
