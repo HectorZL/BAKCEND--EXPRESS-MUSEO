@@ -19,14 +19,23 @@ const __dirname = dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
-// --- Configurar Sirv y Multer ---
-const storage = multer.memoryStorage();
+// --- Configurar Sirv (Opcional) ---
+// Si no tienes Sirv, los archivos se guardarán localmente en una sola carpeta 'images'
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'images/');
+  },
+  filename: (req, file, cb) => {
+    const safeFilename = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '');
+    cb(null, Date.now() + '-' + safeFilename);
+  }
+});
 const upload = multer({ storage: storage });
 
 // El cliente de Sirv se autentica al iniciarse
-const sirvAccount = process.env.SIRV_ACCOUNT_NAME;
-const sirvClientId = process.env.SIRV_CLIENT_ID;
-const sirvClientSecret = process.env.SIRV_CLIENT_SECRET;
+// const sirvAccount = process.env.SIRV_ACCOUNT_NAME;
+// const sirvClientId = process.env.SIRV_CLIENT_ID;
+// const sirvClientSecret = process.env.SIRV_CLIENT_SECRET;
 
 // --- Middlewares Globales ---
 app.use(cors()); 
@@ -59,6 +68,18 @@ const authMiddleware = (req, res, next) => {
 
 
 
+const uploadFile = async (file, folder) => {
+  if (!file) return null;
+  
+  // Si tienes Sirv configurado, úsalo
+  if (process.env.SIRV_ACCOUNT_NAME && process.env.SIRV_CLIENT_ID) {
+    return await uploadToSirv(file.buffer, file.originalname, folder);
+  }
+  
+  // Si no, devuelve la ruta local
+  return `/${folder}/${file.filename}`;
+};
+
 const uploadToSirv = async (fileBuffer, originalname, folder) => {
   const safeFilename = basename(originalname).replace(/[^a-zA-Z0-9._-]/g, '');
   const sirvPath = `/${folder}/${Date.now()}-${safeFilename}`;
@@ -69,8 +90,8 @@ const uploadToSirv = async (fileBuffer, originalname, folder) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        clientId: sirvClientId,
-        clientSecret: sirvClientSecret,
+        clientId: process.env.SIRV_CLIENT_ID,
+        clientSecret: process.env.SIRV_CLIENT_SECRET,
       }),
     });
     const { token } = await tokenRes.json();
@@ -88,12 +109,11 @@ const uploadToSirv = async (fileBuffer, originalname, folder) => {
       throw new Error(`Error al subir archivo a Sirv: ${errText}`);
     }
 
-    return `https://${sirvAccount}.sirv.com${sirvPath}`;
+    return `https://${process.env.SIRV_ACCOUNT_NAME}.sirv.com${sirvPath}`;
   } catch (error) {
     console.error('Error subiendo a Sirv:', error.message);
     throw new Error('Fallo la subida de archivo a Sirv.');
   }
-
 };
 
 
@@ -239,18 +259,14 @@ app.post('/api/admin/obras', authMiddleware, upload.single('imagen_file'), async
       return res.status(400).json({ message: 'El archivo de imagen es requerido' });
     }
 
-    // --- ¡CAMBIO! Llamar a uploadToSirv ---
-    const imageUrl = await uploadToSirv(
-      req.file.buffer, 
-      req.file.originalname, 
-      'galeria-museo-obras'
-    );
+    // --- Upload de archivo (local o Sirv) ---
+    const imageUrl = await uploadFile(req.file, 'images');
 
     const { titulo, descripcion, tecnica, tamano, fecha_creacion, autor_id, coleccion_id } = req.body;
     
     const newObra = await db.query(
       `INSERT INTO obras (titulo, descripcion, tecnica, tamano, fecha_creacion, imagen_url, autor_id, coleccion_id) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
       [titulo, descripcion, tecnica, tamano, fecha_creacion, imageUrl, autor_id, coleccion_id]
     );
     res.status(201).json(newObra.rows[0]);
@@ -269,12 +285,8 @@ app.put('/api/admin/obras/:id', authMiddleware, upload.single('imagen_file'), as
     let imageUrl;
     
     if (req.file) {
-      // --- ¡CAMBIO! Llamar a uploadToSirv ---
-      imageUrl = await uploadToSirv(
-        req.file.buffer, 
-        req.file.originalname, 
-        'galeria-museo-obras'
-      );
+      // --- Upload de archivo (local o Sirv) ---
+      imageUrl = await uploadFile(req.file, 'images');
     }
 
     let updatedObra;
@@ -326,12 +338,8 @@ app.post('/api/admin/autores', authMiddleware, upload.single('foto_file'), async
     let fotoUrl = null; 
 
     if (req.file) {
-      // --- ¡CAMBIO! Llamar a uploadToSirv ---
-      fotoUrl = await uploadToSirv(
-        req.file.buffer, 
-        req.file.originalname, 
-        'galeria-museo-autores'
-      );
+      // --- Upload de archivo (local o Sirv) ---
+      fotoUrl = await uploadFile(req.file, 'images');
     }
     
     const newAutor = await db.query(
@@ -353,12 +361,8 @@ app.put('/api/admin/autores/:id', authMiddleware, upload.single('foto_file'), as
     let fotoUrl;
     
     if (req.file) {
-      // --- ¡CAMBIO! Llamar a uploadToSirv ---
-      fotoUrl = await uploadToSirv(
-        req.file.buffer, 
-        req.file.originalname, 
-        'galeria-museo-autores'
-      );
+      // --- Upload de archivo (local o Sirv) ---
+      fotoUrl = await uploadFile(req.file, 'images');
     }
 
     let updatedAutor;
